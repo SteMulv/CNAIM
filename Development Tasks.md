@@ -342,7 +342,7 @@ The static website is already live on AWS, so this phase deploys the CNAIM Docke
 - [ ] Configure CORS to allow requests from the existing live website domain.
 - [x] Configure health checks for `/health` and version checks for `/version`.
 - [x] Test the deployed PoF endpoint with the existing Postman/curl test payload.
-- [ ] Confirm logs are available and do not contain survey payloads, tokens, or passwords.
+- [x] Confirm logs are available and do not contain survey payloads, tokens, or passwords. The API logger emits only request metadata (`request_id`, method, path, status, duration, and safe error code); it does not log full survey bodies, tokens, passwords, or other sensitive values.
 
 #### Phase 4 Task 1 implementation note
 
