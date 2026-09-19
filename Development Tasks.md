@@ -335,7 +335,7 @@ The static website is already live on AWS, so this phase deploys the CNAIM Docke
 - [x] Create a non-root IAM deployment identity for development.
 - [x] Choose the AWS development region and naming convention.
 - [x] Create an Amazon ECR repository for the CNAIM API image.
-- [ ] Build the current Docker image and push it to ECR.
+- [x] Build the current Docker image and push it to ECR.
 - [ ] Run the image in Amazon ECS Express Mode for development, backed by AWS Fargate.
 - [ ] Keep the API private where possible, behind API Gateway or an internal load balancer.
 - [ ] Configure the development API hostname and HTTPS.
@@ -368,6 +368,8 @@ AWS App Runner is not an option for this new deployment because AWS stopped acce
 The development region is `eu-west-2` (Europe/London), and the account was verified in AWS CloudShell. The ECR repository `cnaim-dev-api` was created successfully with immutable image tags and default AES-256 encryption. The repository is currently empty; the next deployment step is to build the Docker image and push a versioned tag such as `v0.1.0`.
 
 The initial CloudShell check used the AWS root identity. Root must not be used for routine deployment. Create and use a non-root IAM deployment identity before pushing images or creating ECS resources. Do not create long-lived root access keys.
+
+The image `cnaim-dev-api:v0.1.0` was built from the `cnaim-api` repository (CNAIM commit `7418b6b149d5886a130f8e66de6a51f822e60f7c`) and pushed to `158074571041.dkr.ecr.eu-west-2.amazonaws.com/cnaim-dev-api:v0.1.0`, digest `sha256:13a453c4c2a2d71651b3b6904fd3a223d0fc7705c26161e94b12ecbc479bdcf2`. The next step is to run this image in Amazon ECS Express Mode.
 
 #### Phase 4 IAM deployment identity checklist
 
