@@ -336,12 +336,12 @@ The static website is already live on AWS, so this phase deploys the CNAIM Docke
 - [x] Choose the AWS development region and naming convention.
 - [x] Create an Amazon ECR repository for the CNAIM API image.
 - [x] Build the current Docker image and push it to ECR.
-- [ ] Run the image in Amazon ECS Express Mode for development, backed by AWS Fargate.
+- [x] Run the image in Amazon ECS Express Mode for development, backed by AWS Fargate.
 - [ ] Keep the API private where possible, behind API Gateway or an internal load balancer.
 - [ ] Configure the development API hostname and HTTPS.
 - [ ] Configure CORS to allow requests from the existing live website domain.
-- [ ] Configure health checks for `/health` and version checks for `/version`.
-- [ ] Test the deployed PoF endpoint with the existing Postman/curl test payload.
+- [x] Configure health checks for `/health` and version checks for `/version`.
+- [x] Test the deployed PoF endpoint with the existing Postman/curl test payload.
 - [ ] Confirm logs are available and do not contain survey payloads, tokens, or passwords.
 
 #### Phase 4 Task 1 implementation note
@@ -369,7 +369,9 @@ The development region is `eu-west-2` (Europe/London), and the account was verif
 
 The initial CloudShell check used the AWS root identity. Root must not be used for routine deployment. Create and use a non-root IAM deployment identity before pushing images or creating ECS resources. Do not create long-lived root access keys.
 
-The image `cnaim-dev-api:v0.1.0` was built from the `cnaim-api` repository (CNAIM commit `7418b6b149d5886a130f8e66de6a51f822e60f7c`) and pushed to `158074571041.dkr.ecr.eu-west-2.amazonaws.com/cnaim-dev-api:v0.1.0`, digest `sha256:13a453c4c2a2d71651b3b6904fd3a223d0fc7705c26161e94b12ecbc479bdcf2`. The next step is to run this image in Amazon ECS Express Mode.
+The image `cnaim-dev-api:v0.1.0` was built from the `cnaim-api` repository (CNAIM commit `7418b6b149d5886a130f8e66de6a51f822e60f7c`) and pushed to `158074571041.dkr.ecr.eu-west-2.amazonaws.com/cnaim-dev-api:v0.1.0`, digest `sha256:13a453c4c2a2d71651b3b6904fd3a223d0fc7705c26161e94b12ecbc479bdcf2`.
+
+The image is deployed as ECS Express Mode service `cnaim-dev-api` in cluster `cnaim-dev`, reachable at `https://cn-e9f6516f75f04a1bbe8597bb64e4d337.ecs.eu-west-2.on.aws`, which Express Mode automatically provisioned behind an Application Load Balancer with a managed TLS certificate. The `/health`, `/version`, and `POST /api/v1/pof/transformers` endpoints were confirmed working against this live endpoint. This deployment currently has a public ingress path; restricting it behind API Gateway or an internal load balancer remains an open task.
 
 #### Phase 4 IAM deployment identity checklist
 
