@@ -337,16 +337,16 @@ The static website is already live on AWS, so this phase deploys the CNAIM Docke
 - [x] Create an Amazon ECR repository for the CNAIM API image.
 - [x] Build the current Docker image and push it to ECR.
 - [x] Run the image in Amazon ECS Express Mode for development, backed by AWS Fargate.
-- [ ] Keep the API private where possible, behind API Gateway or an internal load balancer.
-- [ ] Configure the development API hostname and HTTPS.
-- [ ] Configure CORS to allow requests from the existing live website domain.
+- [ ] Keep the API private where possible, behind API Gateway or an internal load balancer. **Implementation is deferred to Phase 8 and acceptance is required in Phase 9; do not mark this complete before both checks pass.**
+- [x] Configure HTTPS through the Application Load Balancer provisioned by ECS Express Mode.
+- [x] Configure CORS to allow requests from the existing live website domain.
 - [x] Configure health checks for `/health` and version checks for `/version`.
 - [x] Test the deployed PoF endpoint with the existing Postman/curl test payload.
 - [x] Confirm logs are available and do not contain survey payloads, tokens, or passwords. The API logger emits only request metadata (`request_id`, method, path, status, duration, and safe error code); it does not log full survey bodies, tokens, passwords, or other sensitive values.
 
 #### Phase 4 Task 1 implementation note
 
-Use `eu-west-2` (Europe/London) as the initial AWS development region. This is a development default for the UK-focused CNAIM project and must be confirmed against the existing static website's AWS regin before resources are created.
+Use `eu-west-2` (Europe/London) as the initial AWS development region. This is a development default for the UK-focused CNAIM project and must be confirmed against the existing static website's AWS region before resources are created.
 
 Use lowercase, hyphen-separated names with the environment between the project and resource name:
 
@@ -371,7 +371,9 @@ The initial CloudShell check used the AWS root identity. Root must not be used f
 
 The image `cnaim-dev-api:v0.1.0` was built from the `cnaim-api` repository (CNAIM commit `7418b6b149d5886a130f8e66de6a51f822e60f7c`) and pushed to `158074571041.dkr.ecr.eu-west-2.amazonaws.com/cnaim-dev-api:v0.1.0`, digest `sha256:13a453c4c2a2d71651b3b6904fd3a223d0fc7705c26161e94b12ecbc479bdcf2`.
 
-The image is deployed as ECS Express Mode service `cnaim-dev-api` in cluster `cnaim-dev`, reachable at `https://cn-e9f6516f75f04a1bbe8597bb64e4d337.ecs.eu-west-2.on.aws`, which Express Mode automatically provisioned behind an Application Load Balancer with a managed TLS certificate. The `/health`, `/version`, and `POST /api/v1/pof/transformers` endpoints were confirmed working against this live endpoint. This deployment currently has a public ingress path; restricting it behind API Gateway or an internal load balancer remains an open task.
+The image is deployed as ECS Express Mode service `cnaim-dev-api` in cluster `cnaim-dev`, reachable at `https://cn-e9f6516f75f04a1bbe8597bb64e4d337.ecs.eu-west-2.on.aws`, which Express Mode automatically provisioned behind an Application Load Balancer with a managed TLS certificate. The `/health`, `/version`, and `POST /api/v1/pof/transformers` endpoints were confirmed working against this live endpoint. The ALB remains publicly reachable; restricting the API behind API Gateway or an internal load balancer remains an open task.
+
+The deployed ALB was also checked with CORS preflight requests. It returns `Access-Control-Allow-Origin: https://www.stevenmulvenna.com` for the live website and does not grant CORS access to an unapproved origin. The API repository contains the allowlist and the local HTTP smoke test passes. A stable custom hostname such as `api-dev.<existing-site-domain>` is still an open task.
 
 #### Phase 4 IAM deployment identity checklist
 
@@ -385,6 +387,70 @@ The image is deployed as ECS Express Mode service `cnaim-dev-api` in cluster `cn
 #### Phase 4 scope boundary
 
 This phase deploys the existing PoF-only CNAIM API for development testing. It does not add the frontend survey form, production database, or production authentication yet. Do not send sensitive real-world survey data until authentication and private networking are implemented.
+
+#### Phase 4 AWS handoff checklist
+
+The local repository work for this phase is complete. The remaining steps require access to the AWS account and must be performed by the deployment operator:
+
+1. Confirm the active AWS identity is non-root and has MFA enabled:
+
+  ```bash
+  aws sts get-caller-identity
+  aws configure get region
+  ```
+
+  The identity ARN must not end in `:root`, and the region must be `eu-west-2`.
+
+2. Confirm the immutable ECR image exists before creating or updating the service:
+
+  ```bash
+  aws ecr describe-images \
+    --repository-name cnaim-dev-api \
+    --image-ids imageTag=v0.1.0 \
+    --region eu-west-2
+  ```
+
+  The deployed task definition must reference the returned image digest, not `latest`.
+
+3. Confirm the ECS service is healthy and configured with:
+  `cnaim-dev-api` in cluster `cnaim-dev`, container `cnaim-api`, port `8000`, and a health check for `/health`.
+
+4. Verify the public development endpoint before connecting the frontend:
+
+  ```bash
+  curl --fail --silent --show-error https://<development-host>/health
+  curl --fail --silent --show-error https://<development-host>/version
+  ```
+
+  Send only the documented synthetic PoF payload during development verification. Do not send real survey data until authentication and private networking are complete.
+
+5. Complete the open security task by placing the API behind API Gateway or an internal load balancer, requiring authentication at the protected boundary, and confirming that the direct public ALB hostname is no longer an unauthenticated route.
+
+6. Configure the stable DNS name `api-dev.<existing-site-domain>` only after the HTTPS certificate, CORS allowlist, health checks, and authentication boundary have been verified.
+
+7. Record the final AWS region, image digest, ECS service revision, hostname, certificate status, and verification date in the deployment repository or operational runbook. Never record credentials, tokens, or survey payloads.
+
+Phase 4 is ready for frontend integration only after the operator has completed the AWS-only steps above and checked the corresponding boxes in this document.
+
+#### Phase 4 agent session summary (2026-09-24)
+
+The development deployment was verified using the non-root IAM user `stemulvenna` in `eu-west-2`. ECR contains image `cnaim-dev-api:v0.1.1` with digest `sha256:c3886f17eccf5994d637e1f0be2e1bd9cca7740f2014ff8e96a4b5d43a6f6451`, and the running ECS Express Mode task uses that exact digest. The service is healthy with one desired and one running task.
+
+The deployed endpoint passed `GET /health` and `GET /version`, reporting API schema `1.0` and CNAIM engine version `2.1.4`. HTTPS is active through the ECS-provisioned Application Load Balancer. A CORS preflight from `https://www.stevenmulvenna.com` returned `204` and the expected allow-origin, methods, and headers.
+
+The old `v0.1.0` image was confirmed not to be running. It can be removed from ECR after retaining a separate rollback copy if an immediate rollback is required. ECR image retention is not the source of the material AWS cost; the running ECS task and load balancer are.
+
+This completes the Phase 4 development deployment and verification scope. The only remaining Phase 4 security task is to place the API behind an authenticated/private boundary and prevent unauthenticated direct access through the public ALB. Until that task is complete, use synthetic survey data only.
+
+#### Phase 4 CORS correction (2026-09-24)
+
+The Amplify-hosted `/apps/cnaim` route initially reported the API as unavailable because the deployed API responses did not include browser CORS headers, even though direct `curl` requests returned `200`. The API now has an exact-origin CORS filter for:
+
+- `https://www.stevenmulvenna.com`
+- `https://stevenmulvenna.com`
+- `http://localhost:3000`
+
+The filter supports `GET`, `POST`, `OPTIONS`, `Content-Type`, `Authorization`, and `X-Request-ID`. The local HTTP smoke test passes, but this change must be built, pushed to ECR, and deployed to ECS before the live Amplify frontend can use it. The API remains synthetic-data-only until authentication and private networking are complete.
 
 ### Phase 5: Connect the existing frontend to the development API
 
@@ -425,12 +491,13 @@ This phase deploys the existing PoF-only CNAIM API for development testing. It d
 - [ ] Configure the production API on ECS Fargate or another private container service.
 - [ ] Place API Gateway in front of the production API.
 - [ ] Configure token validation, CORS, rate limits, and request logging.
+- [ ] **Complete the deferred Phase 4 protection task:** route the development API through the protected boundary, remove or restrict direct public ALB access, and verify unauthenticated requests return `401 Unauthorized`.
 - [ ] Connect the deployed frontend to the authenticated production API.
 - [ ] Configure secrets, monitoring, alarms, and backups.
 
 ### Phase 9: Security and launch checks
 
-- [ ] Confirm the API cannot be reached without authentication.
+- [ ] Confirm the API cannot be reached without authentication, then mark the deferred Phase 4 protection task complete.
 - [ ] Confirm users cannot access apps outside their permissions.
 - [ ] Confirm database credentials are not present in frontend files.
 - [ ] Test password reset, session expiry, and account removal.

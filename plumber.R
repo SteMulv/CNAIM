@@ -3,6 +3,30 @@ library(jsonlite)
 
 pof_schema_version <- "1.0"
 pof_asset_type <- "6.6/11kV Transformer (GM)"
+allowed_origins <- c(
+  "https://www.stevenmulvenna.com",
+  "https://stevenmulvenna.com",
+  "http://localhost:3000"
+)
+
+#* Restrict browser access to the known frontend origins and handle preflight requests.
+#* @filter cors
+function(req, res) {
+  origin <- req$HTTP_ORIGIN
+  if (!is.null(origin) && origin %in% allowed_origins) {
+    res$setHeader("Access-Control-Allow-Origin", origin)
+    res$setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    res$setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-ID")
+    res$setHeader("Vary", "Origin")
+  }
+
+  if (identical(req$REQUEST_METHOD, "OPTIONS")) {
+    res$status <- 204
+    return(list())
+  }
+
+  plumber::forward()
+}
 
 request_id_for <- function(req = NULL) {
   supplied_id <- if (!is.null(req)) req$HTTP_X_REQUEST_ID else NULL
