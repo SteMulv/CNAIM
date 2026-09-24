@@ -452,6 +452,8 @@ The Amplify-hosted `/apps/cnaim` route initially reported the API as unavailable
 
 The filter supports `GET`, `POST`, `OPTIONS`, `Content-Type`, `Authorization`, and `X-Request-ID`. The local HTTP smoke test passes, but this change must be built, pushed to ECR, and deployed to ECS before the live Amplify frontend can use it. The API remains synthetic-data-only until authentication and private networking are complete.
 
+The guarded deployment helper is `scripts/deploy-dev-api.sh`. It checks the AWS identity and region, builds an immutable image tag, pushes it to ECR, discovers the `cnaim-dev-api` Express Mode service, asks for an explicit `deploy` confirmation, updates the service, and verifies `/health` plus the production-site CORS preflight. It must be run from the API repository root in AWS CloudShell.
+
 ### Phase 5: Connect the existing frontend to the development API
 
 - [ ] Build or confirm the shared layout, navigation, account menu, and error pages in the existing frontend repository.
