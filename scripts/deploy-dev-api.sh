@@ -43,6 +43,12 @@ printf 'AWS identity: %s\n' "$identity_arn"
 printf 'Region: %s\n' "$REGION"
 printf 'Image: %s\n' "$image_uri"
 
+if [[ "${PRUNE_DOCKER_CACHE:-1}" == "1" ]]; then
+  printf '\nRemoving unused Docker build cache and images to preserve CloudShell disk space...\n'
+  docker builder prune --all --force
+  docker image prune --all --force
+fi
+
 aws ecr describe-repositories \
   --repository-names "$ECR_REPOSITORY" \
   --region "$REGION" >/dev/null
