@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../steven-platform"
+		}
+	],
+	"settings": {
+		"r.lsp.promptToInstall": false
+	}
+}
